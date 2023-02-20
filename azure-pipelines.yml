@@ -1,0 +1,52 @@
+# Docker
+# Build a Docker image
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    exclude:
+    - 'kube-template/*'
+    - 'kube-manifests/*'
+    - 'azure-pipelines.yml'
+
+resources:
+- repo: self
+
+variables:
+  tag: '$(Build.BuildId)'
+  containerRegistry: 'peoplefundacr73.azurecr.io'
+  acrname: 'peoplefundacr73'
+  poolName: 'Default'
+
+stages:
+- stage: Build
+  displayName: Build App Containers
+  jobs:
+  - job: Build1
+    displayName: Build productpage App
+    pool: $(poolName)
+    steps:
+    - task: Bash@3
+      displayName: Build productpage Image
+      inputs:
+        targetType: 'inline'
+        script: |
+          ls -lR
+          ls -l /var/run/docker.sock
+          id
+          pushd productpage
+            docker build --pull -t $(containerRegistry)/productpage:$(tag) .
+            docker image list
+          popd
+    - task: Bash@3
+      displayName: Push productpage Image
+      inputs:
+        targetType: 'inline'
+        script: |
+          az login --identity
+          az acr login --name $(acrname)
+          docker push $(containerRegistry)/productpage:$(tag)
+    
